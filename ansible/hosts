@@ -1,0 +1,12 @@
+
+[bootstrap]
+192.168.1.70 
+
+[sleepTrackers]
+192.168.1.70
+
+[systemconfig:children]
+sleepTrackers
+
+[warp10:children]
+sleepTrackers

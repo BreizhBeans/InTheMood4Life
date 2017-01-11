@@ -1,0 +1,28 @@
+---
+- hosts: systemconfig
+  tasks:
+    - name: Update APT package cache
+      apt: update_cache=yes cache_valid_time=3600
+     
+    - name: Upgrade APT to the latest packages
+      apt: upgrade=safe      
+
+    - name: vim install
+      apt: name=vim state=present
+
+    - name: java8 install
+      apt: name=oracle-java8-jdk state=present
+      
+    - name: Delete PI account
+      user: name=pi state=absent remove=yes
+
+    - name: Disallow password authentication
+      lineinfile: dest=/etc/ssh/sshd_config
+                  regexp="^PasswordAuthentication"
+                  line="PasswordAuthentication no"
+                  state=present
+      notify: Restart ssh
+
+  handlers:
+    - name: Restart ssh
+      service: name=ssh state=restarted      

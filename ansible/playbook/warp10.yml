@@ -1,0 +1,89 @@
+---
+# Installs Warp10 Standalone platform
+- hosts: warp10
+
+  vars:
+    temp_dir: /var/tmp/warp10-platform-{{ ansible_date_time.epoch }}
+    warp10_archive: warp10-{{ version }}.tar.gz
+    version: 1.2.5-rc6
+    warp10_home: /opt/warp10
+    force: False
+
+  vars_files:
+    - ../vars/uidgid.yml
+
+  environment:
+    JAVA_HOME: /opt/java8
+    WARP10_HOME: /opt/warp10
+
+  tasks:
+    - name: Create Warp10 group
+      group: name=warp10 gid={{ warp10_gid }} system=yes state=present
+
+    - name: Create Warp10 user
+      user: name=warp10 uid={{ warp10_uid }} comment="Warp10 Lord" group=warp10 state=present createhome=no home={{ warp10_home }}
+
+    - name: Check for existing install
+      shell: test -d /opt/warp10-{{ version }}; echo $?
+      register: check_status
+
+    - name: Create temp dir
+      file: path={{ temp_dir }} state=directory
+      when: check_status.stdout != "0" or force
+
+    - name: Download Warp10 Archive
+      get_url: url=https://dl.bintray.com/cityzendata/generic/io/warp10/warp10/{{ version }}/warp10-{{ version }}.tar.gz dest={{ temp_dir }}
+      when: check_status.stdout != "0" or force  
+
+    - name: Untar in /opt
+      unarchive: src={{ temp_dir }}/warp10-{{ version }}.tar.gz dest=/opt copy=no
+      when: check_status.stdout != "0" or force
+
+    - name: Change permissions
+      file: path=/opt/warp10-{{ version }} owner=warp10 group=warp10 recurse=yes
+      when: (check_status.stdout != "0") or force
+
+    - name: Create warp10 home symlink
+      file: src=/opt/warp10-{{ version }} dest={{ warp10_home }} state=link
+      when: check_status.stdout != "0" or force
+
+    - name: Cleanup tmp directory
+      file: path={{ temp_dir }} force=yes state=absent
+      when: check_status.stdout != "0" or force
+        
+    - name: Init Updates, WARP10_HEAP_MAX
+      replace: dest={{ warp10_home }}/bin/warp10-standalone.init regexp='WARP10_HEAP_MAX=1g' replace='WARP10_HEAP_MAX=256m'
+
+    - name: Init Updates, WARP10_HEAP
+      replace: dest={{ warp10_home }}/bin/warp10-standalone.init regexp='WARP10_HEAP=1g' replace='WARP10_HEAP=64m'
+
+    - name: Uncomment Warp10
+      lineinfile: dest={{ warp10_home }}/bin/warp10-standalone.init regexp='^#WARP10_HOME=/opt/warp10-1.2.5-rc6' line='WARP10_HOME=/opt/warp10' backrefs=yes
+
+    - name: Uncomment Java8
+      lineinfile: dest={{ warp10_home }}/bin/warp10-standalone.init regexp='^#JAVA_HOME=/opt/java8' line='JAVA_HOME=/usr/lib/jvm/jdk-8-oracle-arm32-vfp-hflt' backrefs=yes
+
+    - name: Upgrade MAXOPS to 1000000
+      replace: dest={{ warp10_home }}/templates/conf-standalone.template regexp='warpscript.maxops = 1000' replace='warpscript.maxops = 1000000'
+
+    - name: Upgrade MAXOPSHARD to 2000000
+      replace: dest={{ warp10_home }}/templates/conf-standalone.template regexp='warpscript.maxops.hard = 20000' replace='warpscript.maxops.hard = 2000000'
+
+    - name: Create /etc/init.d symbolic link
+      file: src={{ warp10_home }}/bin/warp10-standalone.init dest=/etc/init.d/warp10 state=link            
+      
+    - name: Starts Warp10 on start up
+      shell: update-rc.d warp10 defaults 10 90
+
+    - name: Restart warp10
+      service: name=warp10 state=restarted     
+
+    
+      
+
+  
+      
+
+           
+
+
