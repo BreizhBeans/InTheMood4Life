@@ -1,12 +1,16 @@
 
 [bootstrap]
-192.168.1.70 
+192.168.1.82 
 
 [sleepTrackers]
-192.168.1.70
+192.168.1.82
 
 [systemconfig:children]
 sleepTrackers
 
 [warp10:children]
 sleepTrackers
+
+[vertx:children]
+sleepTrackers
+

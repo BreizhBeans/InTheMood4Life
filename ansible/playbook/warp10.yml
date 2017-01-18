@@ -69,6 +69,9 @@
     - name: Upgrade MAXOPSHARD to 2000000
       replace: dest={{ warp10_home }}/templates/conf-standalone.template regexp='warpscript.maxops.hard = 20000' replace='warpscript.maxops.hard = 2000000'
 
+    - name:  WARNING POTENCIALLY UNSECURE Bind Standalone on all insterfaces
+      replace: dest={{ warp10_home }}/templates/conf-standalone.template regexp='standalone.host = 127.0.0.1' replace='standalone.host = 0.0.0.0'
+
     - name: Create /etc/init.d symbolic link
       file: src={{ warp10_home }}/bin/warp10-standalone.init dest=/etc/init.d/warp10 state=link            
       
