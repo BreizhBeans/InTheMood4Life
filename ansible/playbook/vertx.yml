@@ -1,0 +1,56 @@
+---
+# Installs Smartpump Standalone platform
+- hosts: vertx
+
+  vars:
+    version: 1.0-SNAPSHOT
+    itm4l_archive: itm4l-{{ version }}-fat.jar
+    vertx_home: /opt/vertx
+    local_archive: "{{ inventory_dir }}/../vertx/build/libs/{{ itm4l_archive }}"
+    force: True
+
+  vars_files:
+    - ../vars/uidgid.yml
+
+  tasks:
+    - name: Create group
+      group: name=vertx gid={{ vertx_gid }} system=yes state=present
+
+    - name: Create user
+      user: name=vertx uid={{ vertx_uid }} comment="Vertx Lord" groups=vertx state=present createhome=no home={{ vertx_home }}
+
+    - name: Check itm4l installed
+      shell: test -d /opt/vertx-{{ version }}; echo $?
+      register: check_status
+
+    - name: Make itm4l home directory
+      command: mkdir -p {{ vertx_home }}  {{ vertx_home }}/bin {{ vertx_home }}/etc {{ vertx_home }}/logs {{ vertx_home }}/scripts
+      when: (check_status.stdout != "0") or force
+
+    - name: Change permissions
+      file: path={{ vertx_home }} owner=vertx group=vertx recurse=yes
+      when: (check_status.stdout != "0") or force
+
+    - name: Copy itm4l in rasp
+      copy: src={{ local_archive }} dest={{ vertx_home }} owner=vertx group=vertx mode=0755
+      when: check_status.stdout != "0" or force
+
+    - name: Create vertx Application symbolic link
+      file: src={{ vertx_home }}/{{ itm4l_archive }} dest={{ vertx_home }}/itm4l.jar state=link
+      when: (check_status.stdout != "0") or force
+
+    - name: Copy vertx configuration
+      template: src=../templates/conf.json dest={{ vertx_home }}/etc/conf.json owner=vertx group=vertx mode=0644    
+
+    - name: Copy vertx init script
+      template: src=../templates/vertx.init dest={{ vertx_home }}/bin/vertx.init owner=vertx group=vertx mode=0755
+
+    - name: Copy BLE scan script
+      template: src=../templates/resetbt.sh dest={{ vertx_home }}/scripts/resetbt.sh owner=vertx group=vertx mode=0755
+
+    - name: Create /etc/init.d symbolic link
+      file: src={{ vertx_home }}/bin/vertx.init dest=/etc/init.d/vertx state=link            
+      when: check_status.stdout != "0" or force
+      
+    - name: Start up after warp10 (level10) but stops first
+      shell: update-rc.d vertx defaults 20 10

@@ -1,0 +1,64 @@
+#!/bin/bash
+#
+# Smartpump - vert.x container, vertx management
+#
+# chkconfig: 2345 80 30
+# description: vertx
+# Source function library.
+if [ -e /etc/rc.d/init.d/functions ];
+then
+  . /etc/rc.d/init.d/functions
+elif [ -e /lib/lsb/init-functions ];
+then
+ . /lib/lsb/init-functions
+fi
+
+
+VERTX_HOME=/opt/vertx
+VERTX_USER=vertx
+VERTX_CONFIG=${VERTX_HOME}/etc/conf.json
+VERTX_JAR=itm4l.jar
+VERTX_HEAP=256m
+
+export MALLOC_ARENA_MAX=1
+JAVA_HOME=/usr/lib/jvm/jdk-8-oracle-arm32-vfp-hflt
+JAVA_OPTS=""
+VERTX_OPTS="-Djava.io.tmpdir=${VERTX_HOME}/vertx.tmp -Dvertx.disableFileCaching=true -Dvertx.logger-delegate-factory-class-name=io.vertx.core.logging.SLF4JLogDelegateFactory"
+
+start() {
+  #launch vertx process as root
+  ${JAVA_HOME}/bin/java ${JAVA_OPTS} ${VERTX_OPTS} -Xmx${VERTX_HEAP} -jar ${VERTX_HOME}/${VERTX_JAR} -conf ${VERTX_CONFIG} > ${VERTX_HOME}/logs/vertx-console.log  2>&1 &
+}
+
+stop() {
+  echo "Stop Vertx"
+  if [ `${JAVA_HOME}/bin/jps -lm|grep ${VERTX_JAR}|cut -f 1 -d' '` != "" ]
+  then
+    kill `${JAVA_HOME}/bin/jps -lm|grep ${VERTX_JAR}|cut -f 1 -d' '`
+  else
+    echo "No instance of vertx is currently running"
+  fi
+}
+
+
+status() {  
+  ${JAVA_HOME}/bin/jps -l|grep ${VERTX_JAR}
+}
+
+# See how we were called.
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  status)
+        status
+        ;;
+  *)
+        echo $"Usage: $0 {start|stop|status}"
+        exit 2
+esac
+
+exit $?
