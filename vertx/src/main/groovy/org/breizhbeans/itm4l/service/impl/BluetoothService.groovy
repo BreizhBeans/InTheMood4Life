@@ -20,6 +20,7 @@ import com.google.common.base.Strings
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.logging.LoggerFactory
+import io.vertx.groovy.core.buffer.Buffer
 import org.breizhbeans.itm4l.exception.FunctionalException
 import org.breizhbeans.itm4l.exception.Functionals
 import org.breizhbeans.itm4l.parameters.UserParameters
@@ -33,7 +34,7 @@ import java.util.regex.Pattern
 class BluetoothService extends AbstractService {
 
   private static enum BleState {
-    SCAN, RECORD, IDLE;
+    SCAN, RECORDING, IDLE;
   }
 
   private static BleState bleState = BleState.IDLE
@@ -162,12 +163,81 @@ class BluetoothService extends AbstractService {
     context.replyHandler.call(output)
   }
 
+
   private void startRecord(ServiceRequest context, def request) {
+    if (!bleState.equals(BleState.IDLE)) {
+      throw new FunctionalException(context.service, Functionals.BLE_NOT_IDLE, "Ble is not IDLE state=(${bleState.name()})")
+    }
+
+    JsonObject device = UserParameters.getDevice()
+
+    if (device == null) {
+      throw new FunctionalException(context.service, Functionals.BLE_NO_DEVICE, "No Beddit device paired")
+    }
+
+    String address = device.getString("address")
+
+    // kill current process is exists
+    if (process!=null && process.running) {
+      logger.debug("bt:record:kill:pid:${process.pid()}")
+      process.kill(true)
+    }
+
+    def options = [
+        env:Process.env()
+    ]
+
+    process = Process.create(context.vertx, "gatttool", ["-b", address,"-I"], options)
+
+    process.stdout().handler({ buff ->
+      String message = buff.toString()
+
+      switch (bleState) {
+        case BleState.IDLE:
+          // dirty process scrapping
+          if (message.contains("Connection successful")) {
+            // writes 01 on the handle 0x0010
+            process.stdin().write(Buffer.buffer("char-write-cmd 0x0010 0100\n"))
+            process.stdin().write(Buffer.buffer("char-write-cmd 0x0009 01\n"))
+            bleState= BleState.RECORDING
+          }
+
+          if (message.contains("connect error")) {
+            process.kill(true)
+            process = null
+          }
+          break;
+        case BleState.RECORDING:
+          println("recording:${message}")
+          break
+      }
+    })
+
+    process.start()
+
+    // try to connect to the Beddit device
+    process.stdin().write(Buffer.buffer("connect\n"))
+
+
     def output = new JsonObject()
     context.replyHandler.call(output)
   }
 
   private void stopRecord(ServiceRequest context, def request) {
+
+    if (!bleState.equals(BleState.RECORDING)) {
+      throw new FunctionalException(context.service, Functionals.BLE_NOT_RECORDING, "Ble is not recording state=(${bleState.name()})")
+    }
+
+    if (process!=null && process.running) {
+      // sends stop command
+      process.stdin().write(Buffer.buffer("char-write-cmd 0x0010 0000\n"))
+      process.stdin().write(Buffer.buffer("disconnect\n"))
+      process.stdin().write(Buffer.buffer("quit\n"))
+      process.kill(true)
+    }
+
+    bleState= BleState.IDLE
     def output = new JsonObject()
     context.replyHandler.call(output)
   }
