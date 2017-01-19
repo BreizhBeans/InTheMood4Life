@@ -21,6 +21,7 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.groovy.core.buffer.Buffer
+import org.breizhbeans.itm4l.beddit.DataFrame
 import org.breizhbeans.itm4l.exception.FunctionalException
 import org.breizhbeans.itm4l.exception.Functionals
 import org.breizhbeans.itm4l.parameters.UserParameters
@@ -198,7 +199,7 @@ class BluetoothService extends AbstractService {
           if (message.contains("Connection successful")) {
             // writes 01 on the handle 0x0010
             process.stdin().write(Buffer.buffer("char-write-cmd 0x0010 0100\n"))
-            process.stdin().write(Buffer.buffer("char-write-cmd 0x0009 01\n"))
+            process.stdin().write(Buffer.buffer("char-write-cmd 0x000e 01\n"))
             bleState= BleState.RECORDING
           }
 
@@ -207,8 +208,19 @@ class BluetoothService extends AbstractService {
             process = null
           }
           break;
+
         case BleState.RECORDING:
-          println("recording:${message}")
+          // this is a handle notification
+          if (message.contains("0x000e")) {
+            //println("recording:${message}")
+            // take first the timestamp before any processing
+            long timestamp = System.currentTimeMillis()
+            // keep only data after value
+            String value = message.substring(message.lastIndexOf("value:") + 1)
+            value = value.replace(" ", "")
+            // post this data on the event bus
+            context.vertx.eventBus().send("streamProcessing", new DataFrame(timestamp, value))
+          }
           break
       }
     })
