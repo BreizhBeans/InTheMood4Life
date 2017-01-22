@@ -236,15 +236,22 @@ class BluetoothService extends AbstractService {
                 // removes spaces
                 value = value.replace(" ", "")
                 byte[] payload = BaseEncoding.base16().decode(value.toUpperCase())
+
+                //extract datagram sequence number for debug
+                logger.debug("recording: datagram number=${payload[1] & 255}")
+
+
                 // post this data on the event bus
                 ByteBuffer outputBuffer = ByteBuffer.allocate(Long.BYTES + payload.length);
                 outputBuffer.putLong(timestamp)
                 outputBuffer.put(payload)
                 //logger.info("recieved ${value}")
                 context.vertx.eventBus().send("streamProcessing", outputBuffer.array())
+              } else {
+                logger.error("recording: unknown message=/${message}/")
               }
             } catch(Exception exp) {
-              logger.error("recording /${value}/${startIndex}/${endIndex}/", exp)
+              logger.error("recording: /${value}/${startIndex}/${endIndex}/", exp)
             }
           }
           break
@@ -280,16 +287,21 @@ class BluetoothService extends AbstractService {
     context.replyHandler.call(output)
   }
 
-  private void stopScan() {
+  public void stop() {
     // kill current process is exists
     if (process!=null && process.running) {
       process.kill(true)
       process = null
     }
-    devices.clear()
 
     // update the ble scan
     bleState= BleState.IDLE
+
   }
 
+  private void stopScan() {
+    // kill current process is exists
+    stop()
+    devices.clear()
+  }
 }

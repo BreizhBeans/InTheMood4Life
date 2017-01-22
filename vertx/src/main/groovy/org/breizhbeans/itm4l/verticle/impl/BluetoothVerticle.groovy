@@ -24,19 +24,23 @@ import org.breizhbeans.itm4l.verticle.AbstractWorkerVerticle
 
 class BluetoothVerticle extends AbstractWorkerVerticle {
 
+  BluetoothService bluetoothService = null
+
   def logger = LoggerFactory.getLogger(BluetoothVerticle.class)
 
   @Override
   public void start() {
     EventBus eb = vertx.eventBus()
 
-    BluetoothService bluetoothService = new BluetoothService(context.config())
+    bluetoothService = new BluetoothService(context.config())
     registerService(logger, eb, "ble-v1", bluetoothService)
     logger.info("Bluetooth verticle started")
   }
 
   @Override
   public void stop() {
-
+    if (bluetoothService != null) {
+      bluetoothService.stop()
+    }
   }
 }
