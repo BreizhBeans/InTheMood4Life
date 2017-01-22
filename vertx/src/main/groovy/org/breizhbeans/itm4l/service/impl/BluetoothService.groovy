@@ -22,7 +22,6 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.groovy.core.buffer.Buffer
-import org.breizhbeans.itm4l.beddit.DataFrame
 import org.breizhbeans.itm4l.beddit.FrameDecoder
 import org.breizhbeans.itm4l.exception.FunctionalException
 import org.breizhbeans.itm4l.exception.Functionals
