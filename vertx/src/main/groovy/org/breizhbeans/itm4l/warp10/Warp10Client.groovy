@@ -78,6 +78,21 @@ class Warp10Client {
     return readToken
   }
 
+  public static void update(HttpClient client, List<String> data) {
+    def warpRequest = client.post(warp10Port,host, updateEndpoint) { warpResponse ->
+      logger.debug("record status=${warpResponse.statusCode()} message=${warpResponse.statusMessage()}")
+    }
+
+    warpRequest.chunked = true
+    warpRequest.headers().add('X-Warp10-Token', getWriteToken())
+    for( String gts : data) {
+      warpRequest.write(gts)
+      warpRequest.write("\n")
+    }
+    warpRequest.end()
+
+  }
+
   public static void pumpExec(HttpClient client, RoutingContext ctx)  {
     def warpRequest = client.post(warp10Port,host, execEndpoint) { warpResponse ->
       // set response headers

@@ -17,11 +17,13 @@
 package org.breizhbeans.itm4l.service.impl
 
 import com.google.common.base.Strings
+import com.google.common.io.BaseEncoding
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.groovy.core.buffer.Buffer
 import org.breizhbeans.itm4l.beddit.DataFrame
+import org.breizhbeans.itm4l.beddit.FrameDecoder
 import org.breizhbeans.itm4l.exception.FunctionalException
 import org.breizhbeans.itm4l.exception.Functionals
 import org.breizhbeans.itm4l.parameters.UserParameters
@@ -29,6 +31,7 @@ import org.breizhbeans.itm4l.service.AbstractService
 import org.breizhbeans.itm4l.service.ServiceRequest
 import com.julienviet.groovy.childprocess.Process
 
+import java.nio.ByteBuffer
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 
@@ -198,6 +201,7 @@ class BluetoothService extends AbstractService {
           // dirty process scrapping
           if (message.contains("Connection successful")) {
             // writes 01 on the handle 0x0010
+            FrameDecoder.initDecoder()
             process.stdin().write(Buffer.buffer("char-write-cmd 0x0010 0100\n"))
             process.stdin().write(Buffer.buffer("char-write-cmd 0x000e 01\n"))
             bleState= BleState.RECORDING
@@ -214,12 +218,35 @@ class BluetoothService extends AbstractService {
           if (message.contains("0x000e")) {
             //println("recording:${message}")
             // take first the timestamp before any processing
-            long timestamp = System.currentTimeMillis()
-            // keep only data after value
-            String value = message.substring(message.lastIndexOf("value:") + 1)
-            value = value.replace(" ", "")
-            // post this data on the event bus
-            context.vertx.eventBus().send("streamProcessing", new DataFrame(timestamp, value))
+            String value = null
+            int startIndex, endIndex
+            try {
+              long timestamp = System.currentTimeMillis() * 1000L
+              // keep only data after value
+              startIndex = message.lastIndexOf("value:")
+              // cut after the first \n
+              endIndex = message.indexOf("\n", startIndex)
+
+              if ((startIndex == -1) || (endIndex == -1)) {
+                value = null
+              } else {
+                value = message.substring(startIndex + 7, endIndex)
+              }
+
+              if (!Strings.isNullOrEmpty(value)) {
+                // removes spaces
+                value = value.replace(" ", "")
+                byte[] payload = BaseEncoding.base16().decode(value.toUpperCase())
+                // post this data on the event bus
+                ByteBuffer outputBuffer = ByteBuffer.allocate(Long.BYTES + payload.length);
+                outputBuffer.putLong(timestamp)
+                outputBuffer.put(payload)
+                //logger.info("recieved ${value}")
+                context.vertx.eventBus().send("streamProcessing", outputBuffer.array())
+              }
+            } catch(Exception exp) {
+              logger.error("recording /${value}/${startIndex}/${endIndex}/", exp)
+            }
           }
           break
       }

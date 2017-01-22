@@ -25,7 +25,6 @@ import io.vertx.groovy.core.http.HttpServerResponse
 import io.vertx.groovy.ext.web.Router
 import io.vertx.groovy.ext.web.RoutingContext
 import io.vertx.lang.groovy.GroovyVerticle
-import org.breizhbeans.itm4l.verticle.AbstractWorkerVerticle
 import org.breizhbeans.itm4l.verticle.WorkerVerticleError
 import org.breizhbeans.itm4l.warp10.Warp10Client
 
