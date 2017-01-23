@@ -95,6 +95,7 @@ class FrameDecoder {
       // timestamp of the first datagram
       if (currentTimeStamp == -1) {
         currentTimeStamp = timestamp
+        addGts("${currentTimeStamp}// recording{} 0")
       }
 
       if (sequenceNumber != nextSequenceNumber) {
