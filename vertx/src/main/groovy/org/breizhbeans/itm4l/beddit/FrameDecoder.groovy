@@ -28,10 +28,13 @@ class FrameDecoder {
   private static List<String> gtsBuffer = null
   private static Semaphore mutex = new Semaphore(1)
 
+  // 140 HZ
+  private static final long sensorPeriod = 7142
+
   private static def logger = LoggerFactory.getLogger(FrameDecoder.class)
 
   static void initDecoder() {
-    initDecoder(System.currentTimeMillis() * 1000)
+    initDecoder(-1)
   }
 
   static void initDecoder(long timeStamp) {
@@ -89,36 +92,40 @@ class FrameDecoder {
         throw new Exception("invalid packet type")
       }
 
+      // timestamp of the first datagram
+      if (currentTimeStamp == -1) {
+        currentTimeStamp = timestamp
+      }
+
       // TODO improve robustest for datagram
       if (sequenceNumber != nextSequenceNumber) {
         // get the drift
         int  drift = sequenceNumber - nextSequenceNumber
         if (drift > 0) {
-          currentTimeStamp += 7000 * drift * 9
+          currentTimeStamp += (sensorPeriod * drift * 9)
           nextSequenceNumber += drift
           logger.error("messages lost=${drift} seq=${sequenceNumber} nextseq=${nextSequenceNumber}")
 
         } else {
           throw new Exception("sequence lost")
         }
+      } else {
+        // add drift (debug)
+        addGts("${timestamp}// bcg.drift{} ${timestamp-currentTimeStamp}")
       }
-
-      long firstDataPointTimeStamp  = currentTimeStamp;
 
       while(buffer.position() < payload.length) {
         long sensorValue = buffer.get() & 0xFF
         sensorValue += (buffer.get() & 0xFF) << 8
 
         addGts("${currentTimeStamp}// bcg.raw{} $sensorValue")
-        currentTimeStamp+=7000
+        currentTimeStamp+=sensorPeriod
       }
 
       // next sequence number modulo 255
       ++nextSequenceNumber
       nextSequenceNumber &= 255;
 
-      // add drift (debug)
-      addGts("${timestamp}// bcg.drift{} ${timestamp-firstDataPointTimeStamp}")
     } catch (Exception exp) {
       logger.error(exp.message)
     }

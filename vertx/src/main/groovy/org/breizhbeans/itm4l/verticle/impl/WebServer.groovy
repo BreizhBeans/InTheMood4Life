@@ -18,6 +18,7 @@ package org.breizhbeans.itm4l.verticle.impl
 
 import com.google.common.base.Strings
 import io.vertx.core.json.JsonObject
+import io.vertx.core.logging.LoggerFactory
 import io.vertx.groovy.core.eventbus.EventBus
 import io.vertx.groovy.core.http.HttpClient
 import io.vertx.groovy.core.http.HttpServer
@@ -29,6 +30,8 @@ import org.breizhbeans.itm4l.verticle.WorkerVerticleError
 import org.breizhbeans.itm4l.warp10.Warp10Client
 
 class WebServer extends GroovyVerticle {
+
+  def logger = LoggerFactory.getLogger(WebServer.class)
 
   private HttpClient warp10Client = null
   private HttpServer httpServer = null
@@ -56,6 +59,7 @@ class WebServer extends GroovyVerticle {
 
   @Override
   public void stop() {
+    logger.info "stop WebServer Verticle"
     if (httpServer) {
       httpServer.close()
     }

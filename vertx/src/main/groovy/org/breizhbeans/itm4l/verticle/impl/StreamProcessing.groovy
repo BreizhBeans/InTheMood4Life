@@ -45,5 +45,6 @@ class StreamProcessing extends GroovyVerticle {
   @Override
   public void stop() {
     vertx.cancelTimer(timerId)
+    logger.info "stop StreamProcessing Verticle"
   }
 }

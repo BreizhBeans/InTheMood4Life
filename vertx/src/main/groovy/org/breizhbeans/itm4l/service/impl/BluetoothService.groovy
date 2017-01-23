@@ -279,6 +279,7 @@ class BluetoothService extends AbstractService {
       process.stdin().write(Buffer.buffer("char-write-cmd 0x0010 0000\n"))
       process.stdin().write(Buffer.buffer("disconnect\n"))
       process.stdin().write(Buffer.buffer("quit\n"))
+      Thread.sleep(500)
       process.kill(true)
     }
 

@@ -42,5 +42,6 @@ class BluetoothVerticle extends AbstractWorkerVerticle {
     if (bluetoothService != null) {
       bluetoothService.stop()
     }
+    logger.info("Bluetooth verticle stopped")
   }
 }
