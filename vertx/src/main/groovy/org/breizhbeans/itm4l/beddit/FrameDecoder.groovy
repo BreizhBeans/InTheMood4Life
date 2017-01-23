@@ -97,18 +97,26 @@ class FrameDecoder {
         currentTimeStamp = timestamp
       }
 
-      // TODO improve robustest for datagram
       if (sequenceNumber != nextSequenceNumber) {
         // get the drift
         int  drift = sequenceNumber - nextSequenceNumber
-        if (drift > 0) {
-          currentTimeStamp += (sensorPeriod * drift * 9)
-          nextSequenceNumber += drift
-          logger.error("messages lost=${drift} seq=${sequenceNumber} nextseq=${nextSequenceNumber}")
-
-        } else {
+        if (drift == 0) {
+          // complete loop lost
           throw new Exception("sequence lost")
+        } else if (drift > 0){
+          // positive drift, the next message is in the same sequence
+          nextSequenceNumber += drift
+        } else if (drift < 0) {
+          // negative drift, the next message is in the next sequence (start 0)
+          drift = 255 - drift
+          nextSequenceNumber += drift
+          nextSequenceNumber &= 255;
         }
+
+        // shift the current timestamp
+        currentTimeStamp += (sensorPeriod * drift * 9)
+        logger.error("messages lost=${drift} seq=${sequenceNumber} nextseq=${nextSequenceNumber}")
+
       } else {
         // add drift (debug)
         addGts("${timestamp}// bcg.drift{} ${timestamp-currentTimeStamp}")
