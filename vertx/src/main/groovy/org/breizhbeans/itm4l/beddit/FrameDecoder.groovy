@@ -101,22 +101,21 @@ class FrameDecoder {
       if (sequenceNumber != nextSequenceNumber) {
         // get the drift
         int  drift = sequenceNumber - nextSequenceNumber
+        // positive drift, the next message is in the same sequence
+        // negative drift, the next message is in the next sequence (start 0)
         if (drift == 0) {
           // complete loop lost
           throw new Exception("sequence lost")
-        } else if (drift > 0){
-          // positive drift, the next message is in the same sequence
-          nextSequenceNumber += drift
         } else if (drift < 0) {
-          // negative drift, the next message is in the next sequence (start 0)
           drift = 255 - drift
-          nextSequenceNumber += drift
-          nextSequenceNumber &= 255;
         }
+
+        // reajust the nextSequenceNumber
+        nextSequenceNumber = sequenceNumber
 
         // shift the current timestamp
         currentTimeStamp += (sensorPeriod * drift * 9)
-        logger.error("messages lost=${drift} seq=${sequenceNumber} nextseq=${nextSequenceNumber}")
+        logger.error("messages lost=${drift} seq=${sequenceNumber}")
 
       } else {
         // add drift (debug)
