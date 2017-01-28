@@ -31,6 +31,7 @@ import org.breizhbeans.itm4l.service.ServiceRequest
 import com.julienviet.groovy.childprocess.Process
 
 import java.nio.ByteBuffer
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 
@@ -40,10 +41,20 @@ class BluetoothService extends AbstractService {
     SCAN, RECORDING, IDLE;
   }
 
+
+  private static enum BleConnectionState {
+    DISCONNECTED, CONNECTED;
+  }
+
+
   private static BleState bleState = BleState.IDLE
+  private static BleConnectionState bleConnectionState = BleConnectionState.DISCONNECTED
+  private static AtomicInteger bleMessagesReceived = new AtomicInteger(0)
+
   private static Process process = null
   private String scriptsDir = null
   private Map<String,String> devices = [:]
+  private int messageRate = 0
 
   def logger = LoggerFactory.getLogger(BluetoothService.class)
 
@@ -56,8 +67,35 @@ class BluetoothService extends AbstractService {
 
     services.put('record/start', this.&startRecord)
     services.put('record/stop', this.&stopRecord)
+    services.put('status', this.&status)
 
     scriptsDir= config.get("scripts")
+  }
+
+  //
+  // Monitorring methods
+  //
+
+  public void monitoring() {
+    messageRate = bleMessagesReceived.getAndSet(0)
+  }
+
+
+  //
+  // API methods
+  //
+  private void status(ServiceRequest context, def request) {
+    JsonObject output = new JsonObject()
+    output.put('status', bleState.name())
+
+
+    JsonObject beddit = new JsonObject()
+    beddit.put('status', bleConnectionState.name())
+    beddit.put('messageRate', messageRate)
+
+    output.put('beddit', beddit)
+
+    context.replyHandler.call(output)
   }
 
   private void startScan(ServiceRequest context, def request) {
@@ -184,6 +222,7 @@ class BluetoothService extends AbstractService {
     if (process!=null && process.running) {
       logger.debug("bt:record:kill:pid:${process.pid()}")
       process.kill(true)
+      throw new FunctionalException(context.service, Functionals.BLE_PROCESS_RUNNING, "BLE process still running")
     }
 
     def options = [
@@ -194,12 +233,14 @@ class BluetoothService extends AbstractService {
 
     process.stdout().handler({ buff ->
       String message = buff.toString()
+      bleMessagesReceived.andIncrement
 
       switch (bleState) {
         case BleState.IDLE:
           // dirty process scrapping
           if (message.contains("Connection successful")) {
             // writes 01 on the handle 0x0010
+            bleConnectionState = BleConnectionState.CONNECTED
             FrameDecoder.initDecoder()
             process.stdin().write(Buffer.buffer("char-write-cmd 0x0010 0100\n"))
             process.stdin().write(Buffer.buffer("char-write-cmd 0x000e 01\n"))
@@ -207,8 +248,8 @@ class BluetoothService extends AbstractService {
           }
 
           if (message.contains("connect error")) {
+            bleConnectionState = BleConnectionState.DISCONNECTED
             process.kill(true)
-            process = null
           }
           break;
 
@@ -258,6 +299,12 @@ class BluetoothService extends AbstractService {
       }
     })
 
+    process.exitHandler( { exitStatus ->
+      logger.info("gatttool exit status=${exitStatus}")
+      bleConnectionState = BleConnectionState.DISCONNECTED
+      process = null
+    })
+
     process.start()
 
     // try to connect to the Beddit device
@@ -275,12 +322,12 @@ class BluetoothService extends AbstractService {
     }
 
     if (process!=null && process.running) {
+      logger.info("stop gatttool process pid=${process.pid()}")
       // sends stop command
       process.stdin().write(Buffer.buffer("char-write-cmd 0x0010 0000\n"))
       process.stdin().write(Buffer.buffer("disconnect\n"))
       process.stdin().write(Buffer.buffer("quit\n"))
-      Thread.sleep(500)
-      process.kill(true)
+      process.kill()
     }
 
     bleState= BleState.IDLE

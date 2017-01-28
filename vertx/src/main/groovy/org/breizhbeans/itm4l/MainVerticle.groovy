@@ -74,7 +74,5 @@ class MainVerticle extends GroovyVerticle {
   @Override
   public void stop() {
     logger.info "stop MainVerticle"
-    // Kill the process
-    vertx.close()
   }
 }

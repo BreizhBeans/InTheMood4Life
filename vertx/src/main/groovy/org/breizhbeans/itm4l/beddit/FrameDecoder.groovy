@@ -107,8 +107,10 @@ class FrameDecoder {
           // complete loop lost
           throw new Exception("sequence lost")
         } else if (drift < 0) {
-          drift = 255 - drift
+          drift = 255 + drift + 1
         }
+
+        addGts("${timestamp}// bcg.lost{} ${nextSequenceNumber}")
 
         // reajust the nextSequenceNumber
         nextSequenceNumber = sequenceNumber
@@ -116,6 +118,7 @@ class FrameDecoder {
         // shift the current timestamp
         currentTimeStamp += (sensorPeriod * drift * 9)
         logger.error("messages lost=${drift} seq=${sequenceNumber}")
+
 
       } else {
         // add drift (debug)
@@ -132,7 +135,7 @@ class FrameDecoder {
 
       // next sequence number modulo 255
       ++nextSequenceNumber
-      nextSequenceNumber &= 255;
+      nextSequenceNumber &= 0x000000FF
 
     } catch (Exception exp) {
       logger.error(exp.message)
