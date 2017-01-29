@@ -93,6 +93,19 @@ class Warp10Client {
 
   }
 
+  public static String exec(HttpClient client, String script, Closure resultHandler) {
+    def warpRequest = client.post(warp10Port,host, execEndpoint) { warpResponse ->
+
+      warpResponse.bodyHandler({ buffer ->
+        resultHandler.call(warpResponse.statusCode(), warpResponse.statusMessage(), buffer)
+      })
+    }
+
+    warpRequest.chunked = true
+    warpRequest.write(script)
+    warpRequest.end()
+  }
+
   public static void pumpExec(HttpClient client, RoutingContext ctx)  {
     def warpRequest = client.post(warp10Port,host, execEndpoint) { warpResponse ->
       // set response headers

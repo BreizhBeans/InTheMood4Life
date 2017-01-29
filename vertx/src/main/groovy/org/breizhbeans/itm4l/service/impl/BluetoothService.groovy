@@ -287,7 +287,7 @@ class BluetoothService extends AbstractService {
                 outputBuffer.putLong(timestamp)
                 outputBuffer.put(payload)
                 //logger.info("recieved ${value}")
-                context.vertx.eventBus().send("streamProcessing", outputBuffer.array())
+                context.vertx.eventBus().send("warpRecorder", outputBuffer.array())
               } else {
                 logger.error("recording: unknown message=/${message}/")
               }

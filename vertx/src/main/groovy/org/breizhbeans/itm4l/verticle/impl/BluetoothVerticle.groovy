@@ -23,7 +23,6 @@ import org.breizhbeans.itm4l.service.impl.BluetoothService
 import org.breizhbeans.itm4l.verticle.AbstractWorkerVerticle
 import org.breizhbeans.itm4l.warp10.Warp10Client
 
-
 class BluetoothVerticle extends AbstractWorkerVerticle {
 
   BluetoothService bluetoothService = null

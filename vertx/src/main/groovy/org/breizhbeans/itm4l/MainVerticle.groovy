@@ -50,13 +50,22 @@ class MainVerticle extends GroovyVerticle {
       }
     }
 
-    vertx.deployVerticle("groovy:org.breizhbeans.itm4l.verticle.impl.StreamProcessing", ['worker': true, 'config':config, 'instances':1]) { asyncResult ->
+    vertx.deployVerticle("groovy:org.breizhbeans.itm4l.verticle.impl.WarpRecorder", ['worker': true, 'config':config, 'instances':1]) { asyncResult ->
       if (asyncResult.succeeded()) {
-        logger.info "StreamProcessing verticle deployed, deployment ID is ${asyncResult.result()}"
+        logger.info "WarpRecorder verticle deployed, deployment ID is ${asyncResult.result()}"
       } else {
-        logger.error("StreamProcessing verticle deploy error - unable to start", asyncResult.cause())
+        logger.error("WarpRecorder verticle deploy error - unable to start", asyncResult.cause())
       }
     }
+
+    vertx.deployVerticle("groovy:org.breizhbeans.itm4l.verticle.impl.WarpAnalyser", ['worker': true, 'config':config, 'instances':1]) { asyncResult ->
+      if (asyncResult.succeeded()) {
+        logger.info "WarpAnalyser verticle deployed, deployment ID is ${asyncResult.result()}"
+      } else {
+        logger.error("WarpAnalyser verticle deploy error - unable to start", asyncResult.cause())
+      }
+    }
+
 
     // deploy Web Server Verticle
     vertx.deployVerticle("groovy:org.breizhbeans.itm4l.verticle.impl.WebServer", ['config':config, 'instances':1]) { asyncResult ->
