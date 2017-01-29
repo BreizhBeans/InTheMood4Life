@@ -1,0 +1,12 @@
+<%
+  'minuteToAnalyse' STORE
+  [
+    SWAP
+    'bcg.raw' {}
+    NOW -1 
+  ] @streamProcessing/fetchOne
+  TICKLIST 0 GET
+  $minuteToAnalyse >
+ 
+%> 'streamProcessing/isRawDataRecorded' STORE
+$streamProcessing/isRawDataRecorded

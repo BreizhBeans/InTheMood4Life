@@ -1,0 +1,12 @@
+<%
+  //some body in the bed ?
+  [ SWAP mapper.delta 1 0 0 ] MAP 0 GET
+  true 
+  MUSIGMA /
+  
+  <% 0.0 == %>
+  <% false %>
+  <% true %>
+  IFTE
+%> 'streamProcessing/inBed' STORE
+$streamProcessing/inBed

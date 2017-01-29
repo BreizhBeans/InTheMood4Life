@@ -1,0 +1,7 @@
+<% 
+  FETCH 'fetch_one_result' STORE
+  $fetch_one_result 
+  SIZE 1 == ASSERT
+  $fetch_one_result 0 GET
+%> 'streamProcessing/fetchOne' STORE
+$streamProcessing/fetchOne

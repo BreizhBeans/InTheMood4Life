@@ -1,0 +1,8 @@
+<%
+  // Value's size / bucket size 
+  DUP SIZE TODOUBLE SWAP BUCKETCOUNT TODOUBLE /
+  
+  // put true in the stack if the size/expected > 0.90
+  0.90 >
+%> 'streamProcessing/signalQuality' STORE
+$streamProcessing/signalQuality

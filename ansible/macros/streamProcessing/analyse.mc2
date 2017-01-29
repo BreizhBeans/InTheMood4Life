@@ -1,0 +1,84 @@
+<%
+  [
+    $token
+    'recording' {}
+    NOW -1
+  ] @streamProcessing/fetchOne
+
+  // Session starts
+  FIRSTTICK 'sessionStart' STORE
+
+  $sessionStart ->TSELEMENTS
+  // Round to the next minute
+  // SET 0 from the 5 to 9 elemnt
+  5 6 <%  0 SWAP SET %> FOR
+  // CONVERT IT BACK INTO TIMESTAMP
+  TSELEMENTS->
+  // Adds one minute
+  1 m + 'startTimeStamp' STORE
+  $startTimeStamp 1 m + 'stopTimeStamp' STORE
+
+  // get the last analyzed tick
+  [
+    $token
+    'analyse.signalQuality' {}
+    $sessionStart  ISO8601 NOW ISO8601
+  ] FETCH 'lastAnalyse' STORE
+
+  // analyse already started
+  <% $lastAnalyse  SIZE 1 ==  %>
+  <% 
+    // GET THE LASTTICK
+    $lastAnalyse 0 GET LASTTICK
+    // ADDS ONE MINUTE
+    1 m + 'startTimeStamp' STORE
+    $startTimeStamp 1 m + 'stopTimeStamp' STORE
+  %>
+  IFT
+
+  <% $token $startTimeStamp @streamProcessing/isAnalysed  %>
+  <% STOP %> // Nothing to do  
+  IFT
+
+    // take the latest recorded datapoint
+  <% $token $stopTimeStamp @streamProcessing/isRawDataRecorded %>
+  <%
+    // FETCH RAW DATA (one minute)
+    [
+      $token
+      'bcg.raw' {}
+       $startTimeStamp ISO8601 $stopTimeStamp ISO8601 
+    ] @streamProcessing/fetchOne 'rawData' STORE
+    
+    // BUCKETIZE RAW DATA with sensor period
+    [ $rawData bucketizer.first $rawData LASTTICK $sensorPeriod 0 ] BUCKETIZE 
+    0 GET 'bucketizedData' STORE
+    
+    // Analyse signal quality  
+    $bucketizedData @streamProcessing/signalQuality 'signalQuality' STORE
+    
+    // Extracts if somebody is in the bed or not
+    $rawData @streamProcessing/inBed 'inBed' STORE
+    
+    // TODO extract HR, RR, Agitation
+    // if signal quality is good and in bed = true
+
+    
+    // STORE analysis result
+    [
+
+      NEWGTS 'analyse.signalQuality' RENAME
+      $startTimeStamp NaN NaN NaN  $signalQuality ADDVALUE
+      
+      
+      NEWGTS 'analyse.inBed' RENAME
+      $startTimeStamp NaN NaN NaN $inBed ADDVALUE
+    ] 'gtsOutput' STORE
+    
+    $gtsOutput
+    $writeToken
+    UPDATE
+  %>
+  IFT
+%> 'streamProcessing/analyse' STORE
+$streamProcessing/analyse

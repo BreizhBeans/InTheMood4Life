@@ -72,7 +72,7 @@ class FrameDecoder {
     }
   }
 
-  static synchronized void decode(byte[] payload) {
+  static synchronized int decode(byte[] payload) {
     try {
       // defensible control
       if (payload.length < 8 || payload.length % 2 != 0) {
@@ -86,6 +86,7 @@ class FrameDecoder {
       long timestamp =  buffer.getLong();
       int packetType =  buffer.get() & 255
       int sequenceNumber = buffer.get() & 255
+      int startRecordingTimeStamp = -1
 
       // defensible control
       if (packetType != 128) {
@@ -95,7 +96,8 @@ class FrameDecoder {
       // timestamp of the first datagram
       if (currentTimeStamp == -1) {
         currentTimeStamp = timestamp
-        addGts("${currentTimeStamp}// recording{} 0")
+        startRecordingTimeStamp = timestamp
+        addGts("${startRecordingTimeStamp}// recording{} 0")
       }
 
       if (sequenceNumber != nextSequenceNumber) {
@@ -137,6 +139,7 @@ class FrameDecoder {
       ++nextSequenceNumber
       nextSequenceNumber &= 0x000000FF
 
+      return startRecordingTimeStamp
     } catch (Exception exp) {
       logger.error(exp.message)
     }

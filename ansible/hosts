@@ -1,9 +1,9 @@
 
 [bootstrap]
-192.168.1.82 
+192.168.1.76 
 
 [sleepTrackers]
-192.168.1.82
+192.168.1.76
 
 [systemconfig:children]
 sleepTrackers
@@ -12,5 +12,8 @@ sleepTrackers
 sleepTrackers
 
 [vertx:children]
+sleepTrackers
+
+[warpscript:children]
 sleepTrackers
 

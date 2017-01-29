@@ -1,0 +1,13 @@
+
+// is this minute analysed ?
+// expect the timestamp of the minute and the READ token
+<% 
+    'minuteToAnalyse' STORE
+    [
+      SWAP
+      '~analyse.*' {}
+      $minuteToAnalyse 1
+    ] FETCH
+    SIZE 0 != 
+%> 'streamProcessing/isAnalysed' STORE
+$streamProcessing/isAnalysed

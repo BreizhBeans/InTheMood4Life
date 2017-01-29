@@ -16,10 +16,13 @@
  */
 package org.breizhbeans.itm4l.verticle.impl
 
+import io.vertx.core.json.JsonObject
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.groovy.core.buffer.Buffer
+import io.vertx.groovy.core.eventbus.Message
 import io.vertx.groovy.core.http.HttpClient
 import io.vertx.lang.groovy.GroovyVerticle
+import org.breizhbeans.itm4l.service.impl.BluetoothService
 import org.breizhbeans.itm4l.warp10.Warp10Client
 
 class WarpAnalyser extends GroovyVerticle {
@@ -33,16 +36,33 @@ class WarpAnalyser extends GroovyVerticle {
   public void start() {
     warp10Client = vertx.createHttpClient(['keepAlive': true, 'maxPoolSize': 1])
 
-    recorderTimerId = vertx.setPeriodic(1000, { id ->
-      Warp10Client.exec(warp10Client, "NOW", { int statusCode, String statusMessage, Buffer buffer ->
-        // logger.info("statusCode=${statusCode} message=${statusMessage} payload=${buffer.toString()}")
 
-      })
-    })
+    vertx.eventBus().consumer("warpAnalyser") { Message message ->
+      JsonObject jsonObject = (JsonObject) message.body()
+
+
+      def currentState = BluetoothService.BleState.valueOf(jsonObject.getString("state"))
+
+      vertx.cancelTimer(recorderTimerId)
+
+      switch (currentState) {
+        case BluetoothService.BleState.RECORDING:
+          recorderTimerId = vertx.setPeriodic(60000, { id ->
+            recorderTimerId = id
+            // Build script
+            String script = "'${Warp10Client.getReadToken()}' 'token' STORE\n '${Warp10Client.getWriteToken()}' 'writeToken' STORE\n 7142 'sensorPeriod' STORE\n @streamProcessing/analyse"
+            Warp10Client.exec(warp10Client, script, { int statusCode, String statusMessage, Buffer buffer ->
+              logger.info("statusCode=${statusCode} message=${statusMessage} payload=${buffer.toString()}")
+            })
+          })
+          break;
+      }
+    }
   }
 
   @Override
   public void stop() {
     logger.info "stop WarpAnalyser Verticle"
+    vertx.cancelTimer(recorderTimerId)
   }
 }

@@ -1,0 +1,12 @@
+---
+# Deploy warpScripts
+- hosts: warpscript
+
+  vars:
+    warp10_home: /opt/warp10
+
+  tasks:
+    - name: Copy Macros
+      copy: src=../macros/{{ item.name }} dest={{ warp10_home }}/macros/ owner=warp10 group=warp10 mode=0755 directory_mode=0755
+      with_items:
+        - { name: 'streamProcessing'}

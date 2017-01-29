@@ -21,6 +21,7 @@ import com.google.common.io.BaseEncoding
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.logging.LoggerFactory
+import io.vertx.groovy.core.Vertx
 import io.vertx.groovy.core.buffer.Buffer
 import org.breizhbeans.itm4l.beddit.FrameDecoder
 import org.breizhbeans.itm4l.exception.FunctionalException
@@ -37,7 +38,7 @@ import java.util.regex.Pattern
 
 class BluetoothService extends AbstractService {
 
-  private static enum BleState {
+  public static enum BleState {
     SCAN, RECORDING, IDLE;
   }
 
@@ -205,6 +206,12 @@ class BluetoothService extends AbstractService {
   }
 
 
+  private void broadcastBleState(Vertx vertx) {
+    JsonObject jsonMessage = new JsonObject()
+    jsonMessage.put("state", bleState.name())
+    vertx.eventBus().send("warpAnalyser", jsonMessage)
+  }
+
   private void startRecord(ServiceRequest context, def request) {
     if (!bleState.equals(BleState.IDLE)) {
       throw new FunctionalException(context.service, Functionals.BLE_NOT_IDLE, "Ble is not IDLE state=(${bleState.name()})")
@@ -245,6 +252,9 @@ class BluetoothService extends AbstractService {
             process.stdin().write(Buffer.buffer("char-write-cmd 0x0010 0100\n"))
             process.stdin().write(Buffer.buffer("char-write-cmd 0x000e 01\n"))
             bleState= BleState.RECORDING
+
+            // broadcast the state
+            broadcastBleState(context.vertx)
           }
 
           if (message.contains("connect error")) {
@@ -331,6 +341,10 @@ class BluetoothService extends AbstractService {
     }
 
     bleState= BleState.IDLE
+
+    // broadcast the state
+    broadcastBleState(context.vertx)
+
     def output = new JsonObject()
     context.replyHandler.call(output)
   }
