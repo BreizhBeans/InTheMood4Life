@@ -30,7 +30,7 @@ class WarpAnalyser extends GroovyVerticle {
 
   HttpClient warp10Client
 
-  long recorderTimerId = 0L
+  Long analyserTimerId = null
 
   @Override
   public void start() {
@@ -43,12 +43,16 @@ class WarpAnalyser extends GroovyVerticle {
 
       def currentState = BluetoothService.BleState.valueOf(jsonObject.getString("state"))
 
-      vertx.cancelTimer(recorderTimerId)
+      if (analyserTimerId!=null) {
+        vertx.cancelTimer(analyserTimerId)
+        analyserTimerId = null
+      }
 
       switch (currentState) {
         case BluetoothService.BleState.RECORDING:
-          recorderTimerId = vertx.setPeriodic(60000, { id ->
-            recorderTimerId = id
+          logger.info("start analyser")
+          analyserTimerId = vertx.setPeriodic(60000, { id ->
+            analyserTimerId = id
             // Build script
             String script = "'${Warp10Client.getReadToken()}' 'token' STORE\n '${Warp10Client.getWriteToken()}' 'writeToken' STORE\n 7142 'sensorPeriod' STORE\n @streamProcessing/analyse"
             Warp10Client.exec(warp10Client, script, { int statusCode, String statusMessage, Buffer buffer ->
@@ -63,6 +67,6 @@ class WarpAnalyser extends GroovyVerticle {
   @Override
   public void stop() {
     logger.info "stop WarpAnalyser Verticle"
-    vertx.cancelTimer(recorderTimerId)
+    vertx.cancelTimer(analyserTimerId)
   }
 }

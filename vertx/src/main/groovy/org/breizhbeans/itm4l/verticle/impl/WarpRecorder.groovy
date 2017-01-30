@@ -48,12 +48,12 @@ class WarpRecorder extends GroovyVerticle {
         List<String> gts = FrameDecoder.getGtsBuffer()
         if (gts!=null && gts.size() > 0) {
           Warp10Client.update(warp10Client, gts)
-          logger.debug("${gts.size()} gts recorded")
+          logger.debug("record:Warp10:${gts.size()} gts recorded")
         } else {
-          logger.debug("0 gts recorded")
+          logger.debug("record:Warp10:0 gts recorded")
         }
       } catch (Exception exp) {
-        logger.error("Warp10 update error", exp)
+        logger.error("record:periodic:warp10 update error", exp)
       }
     })
   }

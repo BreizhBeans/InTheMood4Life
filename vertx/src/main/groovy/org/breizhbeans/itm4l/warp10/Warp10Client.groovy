@@ -93,7 +93,7 @@ class Warp10Client {
 
   }
 
-  public static String exec(HttpClient client, String script, Closure resultHandler) {
+  public static void exec(HttpClient client, String script, Closure resultHandler) {
     def warpRequest = client.post(warp10Port,host, execEndpoint) { warpResponse ->
 
       warpResponse.bodyHandler({ buffer ->
