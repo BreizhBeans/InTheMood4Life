@@ -41,7 +41,7 @@ class BluetoothVerticle extends AbstractWorkerVerticle {
     // BLE monitoring
     timerId = vertx.setPeriodic(1000, { id ->
       try {
-        bluetoothService.monitoring()
+        bluetoothService.monitoring(vertx)
       } catch(Exception exp) {
         logger.error("ble:monitoring error", exp)
       }

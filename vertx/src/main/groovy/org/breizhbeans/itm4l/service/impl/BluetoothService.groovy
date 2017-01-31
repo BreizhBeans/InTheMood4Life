@@ -56,6 +56,7 @@ class BluetoothService extends AbstractService {
   private String scriptsDir = null
   private Map<String,String> devices = [:]
   private int messageRate = 0
+  private int deviceMuteSince = 0
 
   def logger = LoggerFactory.getLogger(BluetoothService.class)
 
@@ -67,7 +68,6 @@ class BluetoothService extends AbstractService {
     services.put('pair', this.&pair)
 
     services.put('record/start', this.&startRecord)
-    services.put('record/restart', this.&restartRecord)
     services.put('record/stop', this.&stopRecord)
     services.put('status', this.&status)
 
@@ -78,8 +78,23 @@ class BluetoothService extends AbstractService {
   // Monitorring methods
   //
 
-  public void monitoring() {
+  public void monitoring(Vertx vertx) {
     messageRate = bleMessagesReceived.getAndSet(0)
+
+    if (!bleState.equals(BleState.RECORDING)) {
+      // nothing to do else
+      return
+    }
+
+    if (messageRate == 0) {
+      deviceMuteSince++
+    } else {
+      deviceMuteSince = 0
+    }
+
+    if (deviceMuteSince > 10) {
+      restartGatttool(vertx)
+    }
   }
 
 
@@ -214,6 +229,9 @@ class BluetoothService extends AbstractService {
   }
 
 
+  //
+  // START Record
+  //
   private void startRecord(ServiceRequest context, def request) {
     if (!bleState.equals(BleState.IDLE)) {
       throw new FunctionalException(context.service, Functionals.BLE_NOT_IDLE, "Ble is not IDLE state=(${bleState.name()})")
@@ -234,38 +252,91 @@ class BluetoothService extends AbstractService {
       throw new FunctionalException(context.service, Functionals.BLE_PROCESS_RUNNING, "BLE process still running")
     }
 
+    logger.info("bt:start:gatttool")
+    spawnGatttool(context.vertx, address)
+    bleState= BleState.RECORDING
+
+    // broadcast the state
+    broadcastBleState(context.vertx)
+
+    def output = new JsonObject()
+    context.replyHandler.call(output)
+  }
+
+  private void restartGatttool(Vertx vertx) {
+    if (!bleState.equals(BleState.RECORDING)) {
+      return
+    }
+
+    logger.info("bt:restart:gatttool")
+
+    // stop gatttool
+    stopGatttool(true)
+
+    JsonObject device = UserParameters.getDevice()
+
+    if (device == null) {
+      logger.info("bt:restart:no device")
+      return
+    }
+
+    // Spawn if gatttool is stopped
+    if (process==null) {
+      String address = device.getString("address")
+      logger.info("bt:restart:spawn gatttool address${address}")
+      spawnGatttool(vertx, address)
+    }
+  }
+
+  private void stopRecord(ServiceRequest context, def request) {
+    if (!bleState.equals(BleState.RECORDING)) {
+      throw new FunctionalException(context.service, Functionals.BLE_NOT_RECORDING, "Ble is not recording state=(${bleState.name()})")
+    }
+
+    logger.info("bt:stop:gatttool")
+    stopGatttool(false)
+
+    bleState= BleState.IDLE
+
+    // broadcast the state
+    broadcastBleState(context.vertx)
+
+    def output = new JsonObject()
+    context.replyHandler.call(output)
+  }
+
+
+  private void spawnGatttool(Vertx vertx, String address) {
     def options = [
         env:Process.env()
     ]
 
-    process = Process.create(context.vertx, "gatttool", ["-b", address,"-I"], options)
+    process = Process.create(vertx, "gatttool", ["-b", address, "-I"], options)
 
     process.stdout().handler({ buff ->
       String message = buff.toString()
       bleMessagesReceived.andIncrement
 
-      switch (bleState) {
-        case BleState.IDLE:
+      switch (bleConnectionState) {
+        case BleConnectionState.DISCONNECTED:
           // dirty process scrapping
           if (message.contains("Connection successful")) {
             // writes 01 on the handle 0x0010
+            logger.info("ble:spawnGatttool:connected:to ${address}")
             bleConnectionState = BleConnectionState.CONNECTED
             FrameDecoder.initDecoder()
             process.stdin().write(Buffer.buffer("char-write-cmd 0x0010 0100\n"))
             process.stdin().write(Buffer.buffer("char-write-cmd 0x000e 01\n"))
-            bleState= BleState.RECORDING
-
-            // broadcast the state
-            broadcastBleState(context.vertx)
           }
 
           if (message.contains("connect error")) {
+            logger.info("ble:spawnGatttool:connect error: ${message}")
             bleConnectionState = BleConnectionState.DISCONNECTED
             process.kill(true)
           }
           break;
 
-        case BleState.RECORDING:
+        case BleConnectionState.CONNECTED:
           // this is a handle notification
           if (message.contains("0x000e")) {
             //println("recording:${message}")
@@ -293,13 +364,12 @@ class BluetoothService extends AbstractService {
                 //extract datagram sequence number for debug
                 logger.debug("recording: datagram number=${payload[1] & 255}")
 
-
                 // post this data on the event bus
                 ByteBuffer outputBuffer = ByteBuffer.allocate(Long.BYTES + payload.length);
                 outputBuffer.putLong(timestamp)
                 outputBuffer.put(payload)
                 //logger.info("recieved ${value}")
-                context.vertx.eventBus().send("warpRecorder", outputBuffer.array())
+                vertx.eventBus().send("warpRecorder", outputBuffer.array())
               } else {
                 logger.error("recording: unknown message=/${message}/")
               }
@@ -321,47 +391,18 @@ class BluetoothService extends AbstractService {
 
     // try to connect to the Beddit device
     process.stdin().write(Buffer.buffer("connect\n"))
-
-
-    def output = new JsonObject()
-    context.replyHandler.call(output)
+    deviceMuteSince = 0
   }
 
-  private void restartRecord(ServiceRequest context, def request) {
-    if (!bleState.equals(BleState.RECORDING)) {
-      throw new FunctionalException(context.service, Functionals.BLE_NOT_RECORDING, "Ble is not recording state=(${bleState.name()})")
-    }
-
-    if (process!=null && process.running) {
-      logger.info("send gatttool start commmand process pid=${process.pid()}")
-      // sends start command
-      FrameDecoder.initDecoder(System.currentTimeMillis() * 1000L)
-      process.stdin().write(Buffer.buffer("char-write-cmd 0x0010 0100\n"))
-      process.stdin().write(Buffer.buffer("char-write-cmd 0x000e 01\n"))
-    }
-  }
-
-  private void stopRecord(ServiceRequest context, def request) {
-    if (!bleState.equals(BleState.RECORDING)) {
-      throw new FunctionalException(context.service, Functionals.BLE_NOT_RECORDING, "Ble is not recording state=(${bleState.name()})")
-    }
-
+  private void stopGatttool(boolean force) {
     if (process!=null && process.running) {
       logger.info("stop gatttool process pid=${process.pid()}")
       // sends stop command
       process.stdin().write(Buffer.buffer("char-write-cmd 0x0010 0000\n"))
       process.stdin().write(Buffer.buffer("disconnect\n"))
       process.stdin().write(Buffer.buffer("quit\n"))
-      process.kill()
+      process.kill(force)
     }
-
-    bleState= BleState.IDLE
-
-    // broadcast the state
-    broadcastBleState(context.vertx)
-
-    def output = new JsonObject()
-    context.replyHandler.call(output)
   }
 
   public void stop() {
