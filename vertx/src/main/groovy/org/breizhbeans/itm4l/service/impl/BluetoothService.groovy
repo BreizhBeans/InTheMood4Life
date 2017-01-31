@@ -67,6 +67,7 @@ class BluetoothService extends AbstractService {
     services.put('pair', this.&pair)
 
     services.put('record/start', this.&startRecord)
+    services.put('record/restart', this.&restartRecord)
     services.put('record/stop', this.&stopRecord)
     services.put('status', this.&status)
 
@@ -212,6 +213,7 @@ class BluetoothService extends AbstractService {
     vertx.eventBus().send("warpAnalyser", jsonMessage)
   }
 
+
   private void startRecord(ServiceRequest context, def request) {
     if (!bleState.equals(BleState.IDLE)) {
       throw new FunctionalException(context.service, Functionals.BLE_NOT_IDLE, "Ble is not IDLE state=(${bleState.name()})")
@@ -325,8 +327,21 @@ class BluetoothService extends AbstractService {
     context.replyHandler.call(output)
   }
 
-  private void stopRecord(ServiceRequest context, def request) {
+  private void restartRecord(ServiceRequest context, def request) {
+    if (!bleState.equals(BleState.RECORDING)) {
+      throw new FunctionalException(context.service, Functionals.BLE_NOT_RECORDING, "Ble is not recording state=(${bleState.name()})")
+    }
 
+    if (process!=null && process.running) {
+      logger.info("send gatttool start commmand process pid=${process.pid()}")
+      // sends start command
+      FrameDecoder.initDecoder(System.currentTimeMillis() * 1000L)
+      process.stdin().write(Buffer.buffer("char-write-cmd 0x0010 0100\n"))
+      process.stdin().write(Buffer.buffer("char-write-cmd 0x000e 01\n"))
+    }
+  }
+
+  private void stopRecord(ServiceRequest context, def request) {
     if (!bleState.equals(BleState.RECORDING)) {
       throw new FunctionalException(context.service, Functionals.BLE_NOT_RECORDING, "Ble is not recording state=(${bleState.name()})")
     }

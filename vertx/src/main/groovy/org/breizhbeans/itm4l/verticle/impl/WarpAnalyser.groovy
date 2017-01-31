@@ -44,12 +44,13 @@ class WarpAnalyser extends GroovyVerticle {
       def currentState = BluetoothService.BleState.valueOf(jsonObject.getString("state"))
 
       if (analyserTimerId!=null) {
-        vertx.cancelTimer(analyserTimerId)
+        //vertx.cancelTimer(analyserTimerId)
         analyserTimerId = null
       }
 
       switch (currentState) {
         case BluetoothService.BleState.RECORDING:
+          /*
           logger.info("start analyser")
           analyserTimerId = vertx.setPeriodic(60000, { id ->
             analyserTimerId = id
@@ -59,6 +60,7 @@ class WarpAnalyser extends GroovyVerticle {
               logger.info("statusCode=${statusCode} message=${statusMessage} payload=${buffer.toString()}")
             })
           })
+          */
           break;
       }
     }
@@ -67,6 +69,6 @@ class WarpAnalyser extends GroovyVerticle {
   @Override
   public void stop() {
     logger.info "stop WarpAnalyser Verticle"
-    vertx.cancelTimer(analyserTimerId)
+    //vertx.cancelTimer(analyserTimerId)
   }
 }

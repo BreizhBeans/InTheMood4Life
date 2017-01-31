@@ -119,7 +119,7 @@ class FrameDecoder {
 
         // shift the current timestamp
         currentTimeStamp += (sensorPeriod * drift * 9)
-        logger.error("messages lost=${drift} seq=${sequenceNumber}")
+        logger.debug("messages lost=${drift} seq=${sequenceNumber}")
 
 
       } else {
