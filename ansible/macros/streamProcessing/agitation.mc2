@@ -1,0 +1,9 @@
+<%
+  [ SWAP mapper.delta 0 1 0 ] MAP 
+  [ SWAP mapper.abs 0 0 0 ] MAP 
+  0.015 SINGLEEXPONENTIALSMOOTHING 
+  [ SWAP 20.0 mapper.gt 0 0 0 ] MAP 
+
+  'analyse.agitation' RENAME
+%> 'streamProcessing/agitation' STORE
+$streamProcessing/agitation

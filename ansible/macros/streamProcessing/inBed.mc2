@@ -1,12 +1,18 @@
 <%
-  //some body in the bed ?
-  [ SWAP mapper.delta 1 0 0 ] MAP 0 GET
-  true 
-  MUSIGMA /
-  
-  <% 0.0 == %>
-  <% false %>
+  'inBedGts' STORE
+  [ 
+    [ $inBedGts bucketizer.max 0 8 s 0 ] BUCKETIZE 
+    [ $inBedGts bucketizer.min 0 8 s 0 ] BUCKETIZE
+    [ ]
+    op.sub
+  ] 
+  APPLY
+  [ SWAP bucketizer.mean 0 0 1 ] BUCKETIZE
+  VALUES FLATTEN 0 GET
+
+  <% 50 > %>
   <% true %>
+  <% false %>
   IFTE
 %> 'streamProcessing/inBed' STORE
 $streamProcessing/inBed

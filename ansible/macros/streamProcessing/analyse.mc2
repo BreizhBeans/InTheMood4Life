@@ -48,21 +48,28 @@
       $token
       'bcg.raw' {}
        $startTimeStamp ISO8601 $stopTimeStamp ISO8601 
-    ] @streamProcessing/fetchOne 'rawData' STORE
+    ] FETCH 'rawData' STORE
     
-    // BUCKETIZE RAW DATA with sensor period
-    [ $rawData bucketizer.first $rawData LASTTICK $sensorPeriod 0 ] BUCKETIZE 
-    0 GET 'bucketizedData' STORE
+    <% $rawData SIZE 1 == %>
+    <%    
+      // BUCKETIZE RAW DATA with sensor period
+      [ $rawData bucketizer.first $rawData LASTTICK $sensorPeriod 0 ] BUCKETIZE 
+      0 GET 'bucketizedData' STORE
     
-    // Analyse signal quality  
-    $bucketizedData @streamProcessing/signalQuality 'signalQuality' STORE
+      // Analyse signal quality  
+      $bucketizedData @streamProcessing/signalQuality 'signalQuality' STORE
     
-    // Extracts if somebody is in the bed or not
-    $rawData @streamProcessing/inBed 'inBed' STORE
+      // Extracts if somebody is in the bed or not
+      $rawData @streamProcessing/inBed 'inBed' STORE
     
-    // TODO extract HR, RR, Agitation
-    // if signal quality is good and in bed = true
-
+      // TODO extract HR, RR, Agitation
+      // if signal quality is good and in bed = true
+    %>
+    <%
+      // NO DATA
+      false 'signalQuality' STORE
+    %>
+    IFTE
     
     // STORE analysis result
     [
@@ -70,9 +77,12 @@
       NEWGTS 'analyse.signalQuality' RENAME
       $startTimeStamp NaN NaN NaN  $signalQuality ADDVALUE
       
-      
-      NEWGTS 'analyse.inBed' RENAME
-      $startTimeStamp NaN NaN NaN $inBed ADDVALUE
+      <% 'inBed' DEFINED %>
+      <%
+        NEWGTS 'analyse.inBed' RENAME
+        $startTimeStamp NaN NaN NaN $inBed ADDVALUE
+      %>
+      IFT
     ] 'gtsOutput' STORE
     
     $gtsOutput
