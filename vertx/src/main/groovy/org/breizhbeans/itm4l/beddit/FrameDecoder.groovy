@@ -24,7 +24,7 @@ import java.util.concurrent.Semaphore
 class FrameDecoder {
 
   private static int nextSequenceNumber = 0
-  private static long currentTimeStamp = 0L
+  private static long currentTimeStamp = -1L
   private static List<String> gtsBuffer = null
   private static Semaphore mutex = new Semaphore(1)
 
@@ -59,7 +59,7 @@ class FrameDecoder {
     return output
   }
 
-  private static void addGts(String gts) {
+  public static void addGts(String gts) {
     try {
       mutex.acquire()
       if (gtsBuffer != null) {

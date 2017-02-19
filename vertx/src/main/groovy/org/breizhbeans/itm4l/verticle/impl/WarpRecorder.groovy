@@ -34,11 +34,15 @@ class WarpRecorder extends GroovyVerticle {
   public void start() {
     warp10Client = vertx.createHttpClient(['keepAlive': true, 'maxPoolSize': 1])
 
-    vertx.eventBus().consumer("warpRecorder") { Message message ->
+    vertx.eventBus().consumer("bedditRecorder") { Message message ->
       // decode beddit dataframe and convert it into GTS
       byte[] payload = (byte[]) message.body()
 
       FrameDecoder.decode(payload)
+    }
+
+    vertx.eventBus().consumer("gtsRecorder") { Message message ->
+      FrameDecoder.addGts(new String((byte[]) message.body()))
     }
 
     // thread recorder

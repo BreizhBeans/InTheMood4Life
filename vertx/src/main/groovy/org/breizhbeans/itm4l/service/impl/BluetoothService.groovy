@@ -254,6 +254,9 @@ class BluetoothService extends AbstractService {
 
     logger.info("bt:start:gatttool")
     spawnGatttool(context.vertx, address)
+
+    context.vertx.eventBus().send("gtsRecorder", "// recording 1")
+
     bleState= BleState.RECORDING
 
     // broadcast the state
@@ -296,6 +299,7 @@ class BluetoothService extends AbstractService {
     logger.info("bt:stop:gatttool")
     stopGatttool(false)
 
+    context.vertx.eventBus().send("gtsRecorder", "// recording 0")
     bleState= BleState.IDLE
 
     // broadcast the state
@@ -324,6 +328,7 @@ class BluetoothService extends AbstractService {
             // writes 01 on the handle 0x0010
             logger.info("ble:spawnGatttool:connected:to ${address}")
             bleConnectionState = BleConnectionState.CONNECTED
+            // reset the decoder (frame lost)
             FrameDecoder.initDecoder()
             process.stdin().write(Buffer.buffer("char-write-cmd 0x0010 0100\n"))
             process.stdin().write(Buffer.buffer("char-write-cmd 0x000e 01\n"))
@@ -369,7 +374,7 @@ class BluetoothService extends AbstractService {
                 outputBuffer.putLong(timestamp)
                 outputBuffer.put(payload)
                 //logger.info("recieved ${value}")
-                vertx.eventBus().send("warpRecorder", outputBuffer.array())
+                vertx.eventBus().send("bedditRecorder", outputBuffer.array())
               } else {
                 logger.error("recording: unknown message=/${message}/")
               }
