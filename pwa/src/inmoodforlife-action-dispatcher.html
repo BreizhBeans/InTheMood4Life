@@ -1,0 +1,259 @@
+<!--
+@license MIT
+Copyright (c) 2017 Horacio "LostInBrittany" Gonzalez
+-->
+<link rel="import" href="../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../bower_components/uniflow-polymer/action-dispatcher.html">
+<link rel="import" href="../bower_components/uniflow-polymer/action-emitter.html">
+
+<link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
+
+<dom-module id="inmoodforlife-action-dispatcher">
+  <template>
+
+    <iron-ajax
+        id="startScanRequest"
+        url="[[config.BASE_URL]][[config.API_PATH]][[config.START_SCAN]]"
+        method="GET"></iron-ajax>
+
+    <iron-ajax
+        id="stopScanRequest"
+        url="[[config.BASE_URL]][[config.API_PATH]][[config.STOP_SCAN]]"
+        method="GET"></iron-ajax>
+
+    <iron-ajax
+        id="queryDevicesRequest"
+        url="[[config.BASE_URL]][[config.API_PATH]][[config.DEVICES_SCAN]]"        
+        method="GET"
+        on-response="_handleQueryDevicesResponse"
+        on-error="_handleQueryDevicesError"></iron-ajax>
+
+    <iron-ajax
+        id="pairDeviceRequest"
+        url="[[config.BASE_URL]][[config.API_PATH]][[config.PAIR]]"        
+        method="POST"
+        on-response="_handlePairDeviceResponse"
+        on-error="_handlePairDeviceError"></iron-ajax>        
+
+    <iron-ajax
+        id="startRecordingRequest"
+        url="[[config.BASE_URL]][[config.API_PATH]][[config.START_RECORDING]]"
+        method="GET"></iron-ajax>
+
+    <iron-ajax
+        id="stopRecordingRequest"
+        url="[[config.BASE_URL]][[config.API_PATH]][[config.STOP_RECORDING]]"
+        method="GET"></iron-ajax>
+
+    <iron-ajax
+        id="queryStatusRequest"
+        url="[[config.BASE_URL]][[config.API_PATH]][[config.STATUS]]"        
+        method="GET"
+        on-response="_handleQueryStatusResponse"
+        on-error="_handleQueryStatusError"></iron-ajax>
+  </template>
+  <script>
+    window.inmoodforlifeApp = window.inmoodforlifeApp || {};
+
+    inmoodforlifeApp.actions = {
+      START_SCAN: "START_SCAN",
+      STOP_SCAN: "STOP_SCAN",
+      QUERY_DEVICES: "QUERY_DEVICES",
+      PAIR_DEVICE: "PAIR_DEVICE",
+      START_RECORDING: "START_RECORDING",
+      STOP_RECORDING: "STOP_RECORDING",
+      QUERY_RECORDING: "QUERY_RECORDING",
+      BACK: "BACK",
+      CHANGE_PAGE: "CHANGE_PAGE"
+    }
+
+    inmoodforlifeApp.pages = {
+      INIT: "init",
+      SCANNING: "scanning",
+      PAIRED: "paired",
+      VIEW1: "view1",
+      VIEW404: "view404"
+    } 
+
+    inmoodforlifeApp.config = {
+      BASE_URL: "",
+      API_PATH: "/api/ble/v1",
+      START_SCAN: "/scan/start",
+      STOP_SCAN: "/scan/stop",
+      DEVICES_SCAN: "/scan/devices",
+      PAIR: "/pair",
+      STATUS: "/status",
+      START_RECORDING: "/record/start",
+      STOP_RECORDING: "/record/stop",
+    }
+
+    Polymer({
+      is: "inmoodforlife-action-dispatcher",
+
+      behaviors: [
+        UniFlow.ActionDispatcher,
+        UniFlow.ActionEmitter
+      ],
+
+      properties: {
+        config: {
+          type: Object,
+          value: function() {
+            return inmoodforlifeApp.config;
+          },
+        }
+      },
+
+      //  Actions listeners            
+      
+      [inmoodforlifeApp.actions.START_SCAN]: function() {
+        // Called after application has been initialized
+        console.debug("inmoodforlifeApp.actions.START_SCAN");  
+        this.$.startScanRequest.generateRequest();
+        this.emitAction({
+          type: inmoodforlifeApp.actions.CHANGE_PAGE,
+          pageId: inmoodforlifeApp.pages.SCANNING,
+        });
+      },     
+
+      [inmoodforlifeApp.actions.STOP_SCAN]: function() {
+        // Called after application has been initialized
+        console.debug("inmoodforlifeApp.actions.STOP_SCAN");  
+        this.$.stopScanRequest.generateRequest();
+        this.set("state.devices", []);
+        this.emitAction({
+          type: inmoodforlifeApp.actions.CHANGE_PAGE,
+          pageId: inmoodforlifeApp.pages.INIT,
+        });
+      },      
+
+      [inmoodforlifeApp.actions.QUERY_DEVICES]: function() {
+        // Called after application has been initialized
+        console.debug("inmoodforlifeApp.actions.QUERY_DEVICES");  
+        this.$.queryDevicesRequest.generateRequest();
+      },       
+
+      [inmoodforlifeApp.actions.PAIR_DEVICE]: function(details) {
+        // Called after application has been initialized
+        console.debug("inmoodforlifeApp.actions.PAIR_DEVICE", details.device);
+        this.$.pairDeviceRequest.body = `{"address":"${details.device.address}"}`;
+        this.$.pairDeviceRequest.generateRequest();
+        this.emitAction({
+          type: inmoodforlifeApp.actions.CHANGE_PAGE,
+          pageId: inmoodforlifeApp.pages.PAIRED,
+        });
+      },   
+
+      [inmoodforlifeApp.actions.START_RECORDING]: function() {
+        this.set("state.recording", true);
+        this.$.startRecordingRequest.generateRequest();
+        console.debug("inmoodforlifeApp.actions.START_RECORDING"); 
+
+      },  
+
+      [inmoodforlifeApp.actions.STOP_RECORDING]: function() {
+        this.set("state.recording", false);
+        this.$.stopRecordingRequest.generateRequest();
+        console.debug("inmoodforlifeApp.actions.STOP_RECORDING"); 
+      },         
+
+      [inmoodforlifeApp.actions.QUERY_RECORDING]: function() {
+        // Called after application has been initialized
+        console.debug("inmoodforlifeApp.actions.QUERY_RECORDING");  
+        this.$.queryStatusRequest.generateRequest();
+      },    
+
+      [inmoodforlifeApp.actions.BACK]: function() {
+        // Called when a back button has been pressed
+      },        
+
+      [inmoodforlifeApp.actions.CHANGE_PAGE]: function(details) {
+        // Called when changing pages
+        console.debug("inmoodforlifeApp.actions.CHANGE_PAGE", details, window.location);        
+        var location = "#/"+details.pageId;
+        // If we aren't already in location, we change the location
+        if (location != window.location.hash) {
+          window.history.pushState({}, null, location);
+          window.dispatchEvent(new CustomEvent('location-changed'));
+        }
+      },      
+             
+      _handleQueryDevicesResponse: function(evt, ironRequest) {
+        console.debug("[inmoodforlife-action-dispatcher] _handleQueryDevicesResponse", ironRequest); 
+        if (!ironRequest.response || !ironRequest.response.devices) {
+          return;
+        }
+        this.set("state.devices", ironRequest.response.devices);   
+        /*
+        console.debug("[inmoodforlife-action-dispatcher] _handleQueryDevicesResponse - mock"); 
+        this.set("state.devices", [{
+          "address" : "94:54:93:00:CE:9A",
+          "name" : "Beddit 3642"
+        }]);
+        */
+        console.debug("[inmoodforlife-action-dispatcher] _handleQueryDevicesResponse - devices", this.state.devices);      
+      },       
+
+      _handleQueryDevicesError: function(evt, error) {
+        
+        console.debug("[inmoodforlife-action-dispatcher] _handleQueryDevicesError", error); 
+        /*
+        console.debug("[inmoodforlife-action-dispatcher] _handleQueryDevicesResponse - mock"); 
+        this.set("state.devices", [{
+          "address" : "94:54:93:00:CE:9A",
+          "name" : "Beddit 3642"
+        }]);
+        console.debug("[inmoodforlife-action-dispatcher] _handleQueryDevicesResponse - devices", this.state.devices);          
+        */
+      },
+
+
+      _handlePairDeviceResponse: function(evt, ironRequest) {
+        console.debug("[inmoodforlife-action-dispatcher] _handlePairDeviceResponse"); 
+      },
+      _handlePairDeviceError: function(evt, error) {
+        console.debug("[inmoodforlife-action-dispatcher] _handlePairDeviceError");
+      },
+
+
+      _handleQueryStatusResponse: function(evt, ironRequest) {
+        
+        console.debug("[inmoodforlife-action-dispatcher] _handleQueryStatusResponse"); 
+        this.set("state.status", ironRequest.response);
+
+        /*
+        console.debug("[inmoodforlife-action-dispatcher] _handleQueryDevicesResponse - mock"); 
+
+        this.set("state.status", {
+          "status":"RECORDING",
+          "beddit":{
+            "status":"CONNECTED",
+            "messageRate":15
+          }
+        });
+        */
+        console.debug("[inmoodforlife-action-dispatcher] _handleQueryDevicesResponse - devices", this.state.status); 
+
+      },
+      _handleQueryStatusError: function() {
+        
+        console.debug("[inmoodforlife-action-dispatcher] _handleQueryStatusError"); 
+        /*
+        console.debug("[inmoodforlife-action-dispatcher] _handleQueryDevicesResponse - mock"); 
+
+        this.set("state.status", {
+          "status":"RECORDING",
+          "beddit":{
+            "status":"CONNECTED",
+            "messageRate":15
+          }
+        });
+        console.debug("[inmoodforlife-action-dispatcher] _handleQueryDevicesResponse - devices", this.state.status); 
+        */
+
+      },
+
+    });
+  </script>
+</dom-module>

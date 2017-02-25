@@ -1,0 +1,218 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../bower_components/uniflow-polymer/action-emitter.html">
+<link rel="import" href="../bower_components/uniflow-polymer/state-aware.html">
+
+<link rel="import" href="../bower_components/paper-fab/paper-fab.html">
+<link rel="import" href="../bower_components/paper-item/paper-item.html">
+<link rel="import" href="../bower_components/paper-item/paper-icon-item.html">
+<link rel="import" href="../bower_components/paper-item/paper-item-body.html">
+
+<link rel="import" href="../bower_components/granite-spinner/granite-spinner.html">
+
+<link rel="import" href="inmoodforlife-icons.html">
+<link rel="import" href="shared-styles.html">
+
+<dom-module id="inmoodforlife-scanning">
+  <template>
+    <style include="shared-styles">
+      :host {
+        @apply(--layout-vertical);
+        @apply(--layout-center);
+        background-color: white;
+        height: 100%;
+      }
+      *[hidden] {
+        display: none;
+      }
+      .header {
+        width: 100%;
+        height: 30vh;
+        background-image: url(../images/bg_main.png);
+        background-position: center top;
+        background-repeat: no-repeat;
+				background-size: contain;
+        color: white;
+      }
+      .container {
+    		position: relative;
+        max-width: 960px;
+        padding-left: 2.5vw;
+        padding-right: 2.5vw;
+        margin: 0 auto;
+      }
+      .bodyContainer {
+    		position: relative;
+        max-width: 900px;
+        padding-left: 2.5vw;
+        padding-right: 2.5vw;
+        margin: 5vh auto;
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+        @apply(--layout-center);
+      }
+      #deviceChooser {
+        @apply(--layout-flex);
+      }
+      #stopScanButton {
+        width: 10vh;
+        height: 10vh;
+        --paper-fab-iron-icon: {
+          height: 7.5vh;
+          width: 7.5vh;
+        };
+      }
+      granite-spinner {
+        width: 200px;
+        height: 200px;
+
+      }
+      paper-item{
+        cursor: pointer;
+      }
+      [secondary].mac {
+        color: var(--google-grey-500)  !important;
+        font-size: 0.75rem !important;
+      }
+      .name {
+
+      }
+      
+    </style>
+
+    <div class="header">
+
+      <div class="container">
+
+      </div>
+    </div>     
+
+    <div class="bodyContainer">
+      <div id="deviceChooser">
+        <template is="dom-if" if="[[!state.devices.length]]">
+          <h2>Scanning...</h2>
+          <granite-spinner
+              color="#ff4081" 
+              line-width="2em" 
+              active="[[!state.devices.length]]" ></granite-spinner>
+        </template>  
+        <template is="dom-if" if="[[state.devices.length]]">
+          <h2>Select a device</h2>
+          <template is="dom-repeat" items="[[state.devices]]" as="device">
+            <paper-item on-tap="_onDeviceTap">
+              <paper-item-body two-line>
+                <div>[[device.name]]</div>
+                <div secondary class="mac">[[device.address]]</div>
+              </paper-item-body>  
+            </paper-item>
+          </template>
+        </template>
+      </div>
+      <paper-fab 
+          id="stopScanButton" 
+          icon="inmoodforlife:bluetooth-disabled"
+          on-tap="_onStopButtonTap"></paper-fab>
+    </div>
+  </template>
+  <script>
+    Polymer({
+      is: 'inmoodforlife-scanning',
+
+      behaviors: [
+        UniFlow.ActionEmitter,
+        UniFlow.StateAware
+      ],
+
+      properties: {
+        name: {
+          type: String,
+          value: "scanning",
+        },
+        selected: {
+          type: String,
+        },
+        devices: {
+          type: Array,
+          value: function() {
+            return [];
+          },
+        },
+        _active: {
+          type: Boolean,
+          computed: "_isActive(name,selected)",
+          observer: "_onActiveChanged"
+        }
+      },
+
+      // *******************************************************************************************
+      // Computed properties
+      // *******************************************************************************************
+
+      _isActive: function() {
+        return (this.name == this.selected);
+      },
+
+      // *******************************************************************************************
+      // Observers
+      // *******************************************************************************************
+
+      _onActiveChanged: function() {
+        if (this._active) {
+          this._startDeviceQuerying();
+        } else {
+          this._stopDeviceQuerying();
+        }
+      },
+
+      // *******************************************************************************************
+      // Event handlers
+      // *******************************************************************************************      
+
+      _onStopButtonTap: function() {
+        this.emitAction({
+          type: inmoodforlifeApp.actions.STOP_SCAN,
+        })
+      },
+
+      _onDeviceTap: function(evt) {
+        console.debug("[inmoodforlife-scanning] _onDeviceTap", evt.model);
+        this.emitAction({
+          type: inmoodforlifeApp.actions.PAIR_DEVICE,
+          device: evt.model.device
+        });
+      },
+
+      // *******************************************************************************************
+      // Other instance methods
+      // *******************************************************************************************   
+
+      _startDeviceQuerying: function() {
+        console.debug("[inmoodforlife-scanning] _startDeviceQuerying");
+        this._queryDevices();
+      },
+
+      _stopDeviceQuerying: function() {
+        console.debug("[inmoodforlife-scanning] _stopDeviceQuerying");
+        this.cancelAsync(this._currentQuery);
+      },  
+
+      _queryDevices: function() {
+        console.debug("[inmoodforlife-scanning] _queryDevices");
+        this.emitAction({
+          type: inmoodforlifeApp.actions.QUERY_DEVICES,
+        });
+        this._currentQuery = this.async(this._queryDevices, 5000);
+      },  
+    });
+  </script>
+</dom-module>

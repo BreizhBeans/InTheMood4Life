@@ -1,0 +1,106 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../bower_components/uniflow-polymer/action-emitter.html">
+<link rel="import" href="../bower_components/uniflow-polymer/state-aware.html">
+
+<link rel="import" href="../bower_components/paper-fab/paper-fab.html">
+
+<link rel="import" href="inmoodforlife-icons.html">
+<link rel="import" href="shared-styles.html">
+
+<dom-module id="inmoodforlife-init">
+  <template>
+    <style include="shared-styles">
+      :host {
+        @apply(--layout-vertical);
+        @apply(--layout-center);
+        background-color: white;
+        height: 100%;
+      }
+      *[hidden] {
+        display: none;
+      }
+      .header {
+        width: 100%;
+        height: 30vh;
+        background-image: url(../images/bg_main.png);
+        background-position: center top;
+        background-repeat: no-repeat;
+				background-size: contain;
+        color: white;
+      }
+      .container {
+    		position: relative;
+        max-width: 960px;
+        padding-left: 2.5vw;
+        padding-right: 2.5vw;
+        margin: 0 auto;
+      }
+      .bodyContainer {
+    		position: relative;
+        max-width: 900px;
+        padding-left: 2.5vw;
+        padding-right: 2.5vw;
+        margin: 5vh auto;
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+        @apply(--layout-center);
+        @apply(--layout-center-justified);
+      }
+      #scanButton {
+        width: 20vh;
+        height: 20vh;
+        --paper-fab-iron-icon: {
+          height: 15vh;
+          width: 15vh;
+        };
+      }
+      
+    </style>
+
+    <div class="header">
+
+      <div class="container">
+
+      </div>
+    </div>      
+
+
+    <div class="bodyContainer">
+      <paper-fab 
+          id="scanButton" 
+          icon="inmoodforlife:bluetooth-searching"
+          on-tap="_onScanButtonTap"></paper-fab>
+    </div>
+  </template>
+  <script>
+    Polymer({
+      is: 'inmoodforlife-init',
+
+      behaviors: [
+        UniFlow.ActionEmitter,
+        UniFlow.StateAware
+      ],  
+      
+      // *******************************************************************************************
+      // Event handlers
+      // *******************************************************************************************
+
+      _onScanButtonTap: function() {
+        this.emitAction({
+          type: inmoodforlifeApp.actions.START_SCAN,
+        })
+      },
+    });
+  </script>
+</dom-module>

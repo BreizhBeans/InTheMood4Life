@@ -1,0 +1,253 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../bower_components/iron-icon/iron-icon.html">
+
+<link rel="import" href="../bower_components/uniflow-polymer/action-emitter.html">
+<link rel="import" href="../bower_components/uniflow-polymer/state-aware.html">
+
+<link rel="import" href="../bower_components/paper-fab/paper-fab.html">
+
+<link rel="import" href="inmoodforlife-icons.html">
+<link rel="import" href="shared-styles.html">
+
+<dom-module id="inmoodforlife-paired">
+  <template>
+    <style include="shared-styles">
+      :host {
+        @apply(--layout-vertical);
+        @apply(--layout-center);
+        background-color: white;
+        height: 100%;
+      }
+      *[hidden] {
+        display: none;
+      }
+      .header {
+        width: 100%;
+        height: 30vh;
+        background-image: url(../images/bg_main.png);
+        background-position: center top;
+        background-repeat: no-repeat;
+				background-size: contain;
+        color: white;
+      }
+      .container {
+    		position: relative;
+        max-width: 960px;
+        padding-left: 2.5vw;
+        padding-right: 2.5vw;
+        margin: 0 auto;
+      }
+      .bodyContainer {
+    		position: relative;
+        max-width: 900px;
+        width: calc(100% - 32px);
+        padding-left: 2.5vw;
+        padding-right: 2.5vw;
+        margin: 5vh auto;
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+        @apply(--layout-center);
+      }
+      #startRecordingButton,
+      #stopRecordingButton  {
+        width: 15vh;
+        height: 15vh;
+        --paper-fab-iron-icon: {
+          height: 10vh;
+          width: 10vh;
+        };
+      }
+      .recordingButtons {
+        width: 100%;
+        max-width: 600px;
+        padding: 16px;
+        @apply(--layout-horizontal);
+        @apply(--layout-center);
+        @apply(--layout-around-justified);
+        @apply(--layout-flex);
+      }
+      .horizontalRight {
+        width: 100%;
+        max-width: 600px;
+        @apply(--layout-horizontal);
+        @apply(--layout-center);
+        @apply(--layout-end-justified);
+      }
+      .bedditStatus {
+        color: var(--paper-green-500);
+        margin-left: 16px;
+      }
+      .recordingStatus {
+        margin-left: 16px;
+      }
+      .recordingStatus.recording {
+        color: var(--paper-green-500);
+      }
+      .recordingStatus.stop {
+        color: var(--paper-red-500);
+      }
+      
+    </style>
+
+    <div class="header">
+
+      <div class="container">
+
+      </div>
+    </div>      
+
+
+    <div class="bodyContainer">
+      <div class="horizontalRight">
+        Beddit status: <iron-icon class="bedditStatus" icon="inmoodforlife:bluetooth-connected"></iron-icon>
+      </div>
+      <div class="horizontalRight">
+        Recording status:
+        <template is="dom-if" if="[[state.recording]]">
+          <iron-icon 
+              icon="inmoodforlife:record"
+              class="recordingStatus recording"></iron-icon>
+        </template>
+        <template is="dom-if" if="[[!state.recording]]">
+          <iron-icon 
+              icon="inmoodforlife:stop"
+              class="recordingStatus stop"></iron-icon>
+        </template>
+      </div>
+      <div class="horizontalRight">
+        <template is="dom-if" if="[[state.recording]]">
+          Message rate: [[state.status.beddit.messageRate]] msg/s
+        </template>  
+      </div>  
+      <div class="recordingButtons">
+        <paper-fab 
+            id="startRecordingButton" 
+            icon="inmoodforlife:record"
+            disabled="[[state.recording]]"
+            on-tap="_onStartRecordingButtonTap"></paper-fab>
+
+        <paper-fab 
+            id="stopRecordingButton" 
+            icon="inmoodforlife:stop"
+            disabled="[[!state.recording]]"
+            on-tap="_onStopRecordingButtonTap"></paper-fab>            
+      </div>
+    </div>
+  </template>
+  <script>
+    Polymer({
+      is: 'inmoodforlife-paired',
+
+      behaviors: [
+        UniFlow.ActionEmitter,
+        UniFlow.StateAware
+      ],  
+
+      properties: {
+        name: {
+          type: String,
+          value: "paired",
+        },
+
+        selected: {
+          type: String,
+        },
+        devices: {
+          type: Array,
+          value: function() {
+            return [];
+          },
+        },
+        _isAttached: {
+          type: Boolean,
+        },
+        _active: {
+          type: Boolean,
+          computed: "_isActive(name,selected, _isAttached)",
+          observer: "_onActiveChanged"
+        }
+      }, 
+
+      ready: function() {
+        console.debug("[inmoodforlife-paired] ready", this.state);
+      },
+      attached: function() {
+        console.debug("[inmoodforlife-paired] ready", this.state);
+        this._isAttached = true
+      },
+      // *******************************************************************************************
+      // Computed properties
+      // *******************************************************************************************
+
+      _isActive: function() {
+        console.debug("[inmoodforlife-paired] _isActive");
+        return (this._isAttached && this.name == this.selected);
+      },
+
+      // *******************************************************************************************
+      // Observers
+      // *******************************************************************************************
+
+      _onActiveChanged: function() {
+        console.debug("[inmoodforlife-paired] _onActiveChanged");
+        if (this._active) {
+          this._startRecordingQuerying();
+        } else {
+          this._stopRecordingQuerying();
+        }
+      },
+      
+      // *******************************************************************************************
+      // Event handlers
+      // *******************************************************************************************
+
+      _onStartRecordingButtonTap: function() {
+        this.emitAction({
+          type: inmoodforlifeApp.actions.START_RECORDING,
+        })
+      },
+
+      _onStopRecordingButtonTap: function() {
+        this.emitAction({
+          type: inmoodforlifeApp.actions.STOP_RECORDING,
+        })
+      },
+      
+      // *******************************************************************************************
+      // Other methods
+      // *******************************************************************************************
+
+      _startRecordingQuerying: function() {
+        console.debug("[inmoodforlife-paired] _startRecordingQuerying");
+        this._queryRecording();
+      },
+
+      _stopRecordingQuerying: function() {
+        console.debug("[inmoodforlife-paired] _stopRecordingQuerying");
+        this.cancelAsync(this._currentQuery);
+      },
+
+      _queryRecording: function() {
+        if (this.state.recording) {
+          console.debug("[inmoodforlife-paired] _queryRecording");
+          this.emitAction({
+            type: inmoodforlifeApp.actions.QUERY_RECORDING,
+          });
+        }
+        this._currentQuery = this.async(this._queryRecording, 5000);
+      },        
+
+    });
+  </script>
+</dom-module>

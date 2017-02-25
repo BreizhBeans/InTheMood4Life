@@ -1,2 +1,5 @@
 vertx/.idea
 vertx/.gradle
+bower_components/
+build/
+node_modules/
