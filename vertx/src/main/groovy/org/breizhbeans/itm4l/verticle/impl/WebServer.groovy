@@ -17,6 +17,7 @@
 package org.breizhbeans.itm4l.verticle.impl
 
 import com.google.common.base.Strings
+import io.vertx.core.http.HttpMethod
 import io.vertx.core.json.JsonObject
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.groovy.core.eventbus.EventBus
@@ -25,6 +26,8 @@ import io.vertx.groovy.core.http.HttpServer
 import io.vertx.groovy.core.http.HttpServerResponse
 import io.vertx.groovy.ext.web.Router
 import io.vertx.groovy.ext.web.RoutingContext
+import io.vertx.groovy.ext.web.handler.CorsHandler
+import io.vertx.groovy.ext.web.handler.StaticHandler
 import io.vertx.lang.groovy.GroovyVerticle
 import org.breizhbeans.itm4l.verticle.WorkerVerticleError
 import org.breizhbeans.itm4l.warp10.Warp10Client
@@ -43,11 +46,23 @@ class WebServer extends GroovyVerticle {
     def config = context.config()
     def webConfig = config.get("web")
 
+    String pwaRoot = webConfig["path"]["pwa"]
+
     // local warp10 instance
     warp10Client = vertx.createHttpClient(['keepAlive': true, 'maxPoolSize': 4])
 
-    router.route("/api/:module/:version/*").handler(this.&deviceApi)
+    // CORS Handler
+    def corsHandler = CorsHandler.create("*")
+        .allowedMethod(HttpMethod.GET)
+        .allowedMethod(HttpMethod.POST)
+        .allowedMethod(HttpMethod.OPTIONS)
+        .allowedHeader("Content-Type")
 
+    router.route().handler(corsHandler)
+
+    router.get("/itm4l/*").handler(StaticHandler.create().setAllowRootFileSystemAccess(true).setWebRoot(pwaRoot).setCachingEnabled(false));
+
+    router.route("/api/:module/:version/*").handler(this.&deviceApi)
     router.post("/warp10/api/v0/exec").handler(this.&warp10ExecPump)
     router.get("/warp10/quantum/*").handler(this.&quantumPump)
 

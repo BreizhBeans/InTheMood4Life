@@ -5,7 +5,7 @@
   vars:
     temp_dir: /var/tmp/warp10-platform-{{ ansible_date_time.epoch }}
     warp10_archive: warp10-{{ version }}.tar.gz
-    version: 1.2.5-rc6
+    version: 1.2.5-rc9
     warp10_home: /opt/warp10
     force: False
 
