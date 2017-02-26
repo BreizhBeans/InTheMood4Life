@@ -7,6 +7,7 @@
     itm4l_archive: itm4l-{{ version }}-fat.jar
     vertx_home: /opt/vertx
     local_archive: "{{ inventory_dir }}/../vertx/build/libs/{{ itm4l_archive }}"
+    pwa_archive: "{{ inventory_dir }}/../pwa/build/bundled"
     force: True
 
   vars_files:
@@ -24,7 +25,7 @@
       register: check_status
 
     - name: Make itm4l home directory
-      command: mkdir -p {{ vertx_home }}  {{ vertx_home }}/bin {{ vertx_home }}/etc {{ vertx_home }}/logs {{ vertx_home }}/scripts
+      command: mkdir -p {{ vertx_home }} {{ vertx_home }}/pwa {{ vertx_home }}/bin {{ vertx_home }}/etc {{ vertx_home }}/logs {{ vertx_home }}/scripts
       when: (check_status.stdout != "0") or force
 
     - name: Change permissions
@@ -52,5 +53,14 @@
       file: src={{ vertx_home }}/bin/vertx.init dest=/etc/init.d/vertx state=link            
       when: check_status.stdout != "0" or force
       
-    - name: Start up after warp10 (level10) but stops first
+    - name: deploy pwa
+      copy: src={{ pwa_archive }}/{{ item.name }} dest={{ vertx_home }}/pwa/ owner=vertx group=vertx mode=0755 directory_mode=0755
+      with_items:
+        - { name: 'images'}    
+        - { name: 'src'}    
+        - { name: index.html'}    
+        - { name: manifest.json'}            
+      when: check_status.stdout != "0" or force
+
+    - name: Start up after vertx (level10) but stops first
       shell: update-rc.d vertx defaults 20 10
