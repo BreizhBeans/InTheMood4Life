@@ -46,7 +46,7 @@ class WebServer extends GroovyVerticle {
     def config = context.config()
     def webConfig = config.get("web")
 
-    String pwaRoot = webConfig["path"]["pwa"]
+    String pwaRoot = webConfig["pwa"]
 
     // local warp10 instance
     warp10Client = vertx.createHttpClient(['keepAlive': true, 'maxPoolSize': 4])
